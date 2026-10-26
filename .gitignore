@@ -28,3 +28,27 @@ models/*
 # OS
 .DS_Store
 Thumbs.db
+
+# MIGraphX diagnostic outputs (source/docs remain tracked)
+docs/experiments/migraphx/artifacts/
+docs/experiments/migraphx/build/
+docs/experiments/migraphx/bin/
+docs/experiments/migraphx/profiles/
+docs/experiments/migraphx/references/
+docs/experiments/migraphx/realaudio-v1/
+docs/experiments/migraphx/persistent-v1/*
+!docs/experiments/migraphx/persistent-v1/failure-summary.md
+docs/experiments/migraphx/persistent-cacheonly-v2/*
+!docs/experiments/migraphx/persistent-cacheonly-v2/failure-summary.md
+!docs/experiments/migraphx/persistent-cacheonly-v2/failure-investigation.json
+docs/experiments/migraphx/ort125-*-probe
+docs/experiments/migraphx/diagnostics/cache-hash-regression
+docs/experiments/migraphx/**/*.mxr
+docs/experiments/migraphx/**/*.gob
+docs/experiments/migraphx/**/*.wav
+docs/experiments/migraphx/**/*.mp3
+docs/experiments/migraphx/**/*.onnx
+docs/experiments/migraphx/**/*.onnx.data
+docs/experiments/migraphx/**/*.log
+docs/experiments/migraphx/**/*.so*
+docs/experiments/migraphx/**/__pycache__/

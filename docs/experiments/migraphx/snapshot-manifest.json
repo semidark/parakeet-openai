@@ -1,0 +1,197 @@
+{
+  "description": "Hashes of original copied sources before archival path/documentation edits; not hashes of the final portable copies. Raw run artifacts remain outside Git.",
+  "files": [
+    {
+      "path": "smoke/decoder/README.md",
+      "original_sha256": "43762a498ee14eabca18bde98eee5bf8c75e82202bae71d1f59e790864c854b4"
+    },
+    {
+      "path": "smoke/decoder/data.go",
+      "original_sha256": "5333f628330a1643952d3310b515604d65536456d944608016f7fad8afdae1e1"
+    },
+    {
+      "path": "smoke/decoder/data_test.go",
+      "original_sha256": "225dcc697e6b259184868d320196398d971ae81456c43fbb79b5a725fb1df903"
+    },
+    {
+      "path": "smoke/decoder/main.go",
+      "original_sha256": "e1c8e2efe61f9c1582f5b8ef94a3aca54d62cfd744d2791b0678a017e31875fc"
+    },
+    {
+      "path": "smoke/encoder/main.go",
+      "original_sha256": "5ce96c94720f784844b79e86bdb38928c1f381135178b9346fe52a5f496ef9f7"
+    },
+    {
+      "path": "smoke/go.mod",
+      "original_sha256": "21518842fcf8e3c973e1772fd10b79ffad479238e3d30b7bd2791d35ecc4ca5f"
+    },
+    {
+      "path": "smoke/go.sum",
+      "original_sha256": "2353a7929eaf47d86ab24a78b54afd07a39f1cbed9c36f13eb40ed20888a0938"
+    },
+    {
+      "path": "smoke/main.go",
+      "original_sha256": "546b75b53022c516f6fe34fd2daf33435d25bd381b5538b5d44262ac8f48d0bc"
+    },
+    {
+      "path": "smoke/persistent/README.md",
+      "original_sha256": "afbf20aa3f6f3ce5b260cdb9a12cb3852111b9ae80aa811ca209feb81999ae1b"
+    },
+    {
+      "path": "smoke/persistent/audio.go",
+      "original_sha256": "69b41858692ddb12ba75fba486933a234c79fbf4d27187c43b41277b2f76e779"
+    },
+    {
+      "path": "smoke/persistent/decoder_data.go",
+      "original_sha256": "5333f628330a1643952d3310b515604d65536456d944608016f7fad8afdae1e1"
+    },
+    {
+      "path": "smoke/persistent/decoder_worker.go",
+      "original_sha256": "c8ab32d850d8e27b1ba1533ce45d32573745c63011c133b2f1f917f6759952f3"
+    },
+    {
+      "path": "smoke/persistent/main.go",
+      "original_sha256": "4bab15a1f4ea72b99245a8adae73f2bd166367e24f7061d5cbb7ca60356948e1"
+    },
+    {
+      "path": "smoke/persistent/main_test.go",
+      "original_sha256": "73760bcf9c4dfbb1dd3e25fb8131d9a798eea7ec363c1aad63bd121849398c21"
+    },
+    {
+      "path": "smoke/persistent/mel.go",
+      "original_sha256": "29afcca4b09bb7d822cde9e43ba6deae5a47aee1ce5699a50dd7b26d21c7655f"
+    },
+    {
+      "path": "smoke/persistent/profile.go",
+      "original_sha256": "07b0e531d672cdea30a19e87e2ba5123f19eb2d00faa6c52e3140326c4f01fd1"
+    },
+    {
+      "path": "smoke/persistent/shared.go",
+      "original_sha256": "83ce878a7bd60c85ec3283203be0347107e334f6d4d04bc1e69a136f8dd57dd4"
+    },
+    {
+      "path": "smoke/persistent/source-provenance.json",
+      "original_sha256": "82c9322f88997cbefbf1e6ae8d45c64b1d0e67e631a61f342280537bb7f56de3"
+    },
+    {
+      "path": "smoke/realaudio/README.md",
+      "original_sha256": "abe945a6eb339dc4e53bdd7fb461a3218b6f3f12a363f69fabc9757cd68be4f4"
+    },
+    {
+      "path": "smoke/realaudio/audio.go",
+      "original_sha256": "69b41858692ddb12ba75fba486933a234c79fbf4d27187c43b41277b2f76e779"
+    },
+    {
+      "path": "smoke/realaudio/decoder_data.go",
+      "original_sha256": "5333f628330a1643952d3310b515604d65536456d944608016f7fad8afdae1e1"
+    },
+    {
+      "path": "smoke/realaudio/decoder_worker.go",
+      "original_sha256": "c8ab32d850d8e27b1ba1533ce45d32573745c63011c133b2f1f917f6759952f3"
+    },
+    {
+      "path": "smoke/realaudio/main.go",
+      "original_sha256": "57eac6779cbc62da76c297d9c0f602cc9f4cd1f4712f8763c34321aff7a46691"
+    },
+    {
+      "path": "smoke/realaudio/main_test.go",
+      "original_sha256": "1f588e3fd2652a3854236407df4d61bc8577aec08f3aa110a99d1e29c7eabd4a"
+    },
+    {
+      "path": "smoke/realaudio/mel.go",
+      "original_sha256": "29afcca4b09bb7d822cde9e43ba6deae5a47aee1ce5699a50dd7b26d21c7655f"
+    },
+    {
+      "path": "smoke/realaudio/source-provenance.json",
+      "original_sha256": "fde6a3c8f3fb431e0be57177f92c6962800b66803383d9a1f4c4444ab8ffc6ad"
+    },
+    {
+      "path": "diagnostics/cache-findings.md",
+      "original_sha256": "33155695a0dabe623772c859364da1b014320ca178fdf907aeea04e81487f23d"
+    },
+    {
+      "path": "diagnostics/cache-hash-regression.cc",
+      "original_sha256": "10f07d565357aef878b6406f9c0f96bc4afc43ecb44c0e34ced43c95f3bed7dd"
+    },
+    {
+      "path": "diagnostics/check-decoder-profiles.py",
+      "original_sha256": "501f376d87e41f2a330d2966d434374b136483286ba67215685c195c18cc0377"
+    },
+    {
+      "path": "diagnostics/decoder-probe-v1-results.md",
+      "original_sha256": "2a19ce3c6886bfe2ea5b87b00375c960dde1877577f0a974a3cf1014762a1328"
+    },
+    {
+      "path": "diagnostics/encoder-decoder-isolation-v1.md",
+      "original_sha256": "9a2bc19fc97c0461dca6cefbf7a45d6bd83772f6d85116b1faf0ebaac4146f61"
+    },
+    {
+      "path": "diagnostics/run-persistent-cacheonly-v2.py",
+      "original_sha256": "116e61ceb1ae45d2b51c080995cf245d40cdd4e8d2c83884a527a6d3b2ca03f1"
+    },
+    {
+      "path": "diagnostics/run-persistent-v1.py",
+      "original_sha256": "eb390bbf33c871add9eafa3b3a2652027df9b611c79c5e8a990cc53a2454c496"
+    },
+    {
+      "path": "diagnostics/run-realaudio-v1.py",
+      "original_sha256": "ce0767490a772cb6cd6e2d3f210358513bf2f656bd22a46d72efb030ff8bf960"
+    },
+    {
+      "path": "diagnostics/summarize-persistent-v1.py",
+      "original_sha256": "066c8a496c0905e5cefbee2fe1175a55bdb35808a36e9c9a46fc380cd499b7a3"
+    },
+    {
+      "path": "diagnostics/test-persistent-cacheonly-v2.py",
+      "original_sha256": "3c9a1ee5cd0a4273b3089425bb880872b39bf8822b6dbafe71170ebe06d19468"
+    },
+    {
+      "path": "diagnostics/test-persistent-summary.py",
+      "original_sha256": "7dd1fe2041fc9f557690b471c6edb62c96fd6c05500e73f7c0cda3249829f125"
+    },
+    {
+      "path": "diagnostics/test-realaudio-coverage.py",
+      "original_sha256": "6e23d5491017a537019bc3c64f1692167241ea02fd51213cfec004568f8a4df4"
+    },
+    {
+      "path": "diagnostics/test-realaudio-runner.py",
+      "original_sha256": "9bfc287bbdc2fac2544c67a3881954f8f08c4c1193470c99624a7ba6f48010b3"
+    },
+    {
+      "path": "persistent-v1/failure-summary.md",
+      "original_sha256": "e57449a7676cb7366ad8eefd13e308ca63f5812aa0d1d5f91e50d068a06dba1f"
+    },
+    {
+      "path": "persistent-cacheonly-v2/failure-summary.md",
+      "original_sha256": "5eeedceb022462676dbd6783bab3f0840bf71381e39bfa65cd269a52b4e2b76b"
+    },
+    {
+      "path": "persistent-cacheonly-v2/failure-investigation.json",
+      "original_sha256": "0ff6183ef54d62555f731e5a0b755e30be3f3a1f45aed21e324f9b108d989d76"
+    },
+    {
+      "path": "runtime/validated-provider.patch",
+      "original_sha256": "93491bf3b33a079416e3e7bb80447be6079bc6f3edf3605928206bb7741c553e"
+    },
+    {
+      "path": "runtime/migraphx_cache_key.h",
+      "original_sha256": "e29149fd655e2e8e03a59ea58cec046f5b0b13f510fd9614ce12ac02e34d1ff1"
+    },
+    {
+      "path": "runtime/base-build-identity.txt",
+      "original_sha256": "5d78589a3bc4a3768394f7ac78dac356d14aa8afa005aaca66d8790f682cbb8a"
+    },
+    {
+      "path": "runtime/validated-library-SHA256SUMS",
+      "original_sha256": "e7a13421d6d7d18d095a9b8cac7c9112c5d5455e1999135f33ee7404bfa1c4fe"
+    },
+    {
+      "path": "runtime/build-runtime.sh",
+      "original_sha256": "12a05f12a0238d1c48f85f5eff50414f3a05c9dfd398cc2ddfed83a8d7c9ca7d"
+    },
+    {
+      "path": "runtime/build-cachefix-v1.sh",
+      "original_sha256": "3a6e2761ea64a64e63b0dc4f69536a717cebeac83d389e1bc17ef44da7d6de79"
+    }
+  ]
+}

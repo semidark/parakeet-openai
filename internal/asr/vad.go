@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sync"
 
 	ort "github.com/yalue/onnxruntime_go"
 )
@@ -63,6 +64,9 @@ func (s *vadState) reset() {
 type sileroVAD struct {
 	session *ort.DynamicAdvancedSession
 	srData  []int64
+	// Set only for MIGraphX, whose first Run can mutate compiler state before
+	// the provider's own execution lock. Caller-owned recurrent state is unchanged.
+	runMu *sync.Mutex
 }
 
 // newSileroVAD loads the Silero VAD model from path and creates the shared
@@ -148,10 +152,16 @@ func (v *sileroVAD) infer(st *vadState, window []float32) (float32, error) {
 	}
 	defer stateOutTensor.Destroy()
 
-	if err := v.session.Run(
-		[]ort.Value{inputTensor, stateTensor, srTensor},
-		[]ort.Value{outputTensor, stateOutTensor},
-	); err != nil {
+	if err := func() error {
+		if v.runMu != nil {
+			v.runMu.Lock()
+			defer v.runMu.Unlock()
+		}
+		return v.session.Run(
+			[]ort.Value{inputTensor, stateTensor, srTensor},
+			[]ort.Value{outputTensor, stateOutTensor},
+		)
+	}(); err != nil {
 		return 0, fmt.Errorf("VAD run failed: %w", err)
 	}
 

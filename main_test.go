@@ -107,3 +107,36 @@ func TestApplyEnvDefaults(t *testing.T) {
 		}
 	})
 }
+
+func TestMIGraphXEnvDefaults(t *testing.T) {
+	for _, explicit := range []bool{false, true} {
+		name := "environment defaults"
+		if explicit {
+			name = "CLI overrides environment"
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Setenv("PARAKEET_GPU", "migraphx")
+			t.Setenv("PARAKEET_MIGRAPHX_MEM_LIMIT", "6442450944")
+			t.Setenv("PARAKEET_MIGRAPHX_CACHE_DIR", "/cache/migraphx")
+			fs := flag.NewFlagSet("test", flag.ContinueOnError)
+			gpu := fs.String("gpu", "cpu", "")
+			limit := fs.Uint64("migraphx-mem-limit", 0, "")
+			cache := fs.String("migraphx-cache-dir", "", "")
+			var args []string
+			if explicit {
+				args = []string{"-gpu=cpu", "-migraphx-mem-limit=0", "-migraphx-cache-dir="}
+			}
+			if err := fs.Parse(args); err != nil {
+				t.Fatal(err)
+			}
+			applyEnvDefaults(fs)
+			if explicit {
+				if *gpu != "cpu" || *limit != 0 || *cache != "" {
+					t.Fatalf("explicit defaults overwritten: gpu=%q limit=%d cache=%q", *gpu, *limit, *cache)
+				}
+			} else if *gpu != "migraphx" || *limit != 6442450944 || *cache != "/cache/migraphx" {
+				t.Fatalf("incorrect env defaults: gpu=%q limit=%d cache=%q", *gpu, *limit, *cache)
+			}
+		})
+	}
+}

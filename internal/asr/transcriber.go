@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	ort "github.com/yalue/onnxruntime_go"
 )
@@ -156,8 +157,9 @@ func newDecoderWorker(decoderPath string, vocabSize int, sessOpts *ort.SessionOp
 type Provider string
 
 const (
-	ProviderCPU  Provider = "cpu"
-	ProviderCUDA Provider = "cuda"
+	ProviderCPU      Provider = "cpu"
+	ProviderCUDA     Provider = "cuda"
+	ProviderMIGraphX Provider = "migraphx"
 )
 
 // ParseProvider normalizes a user-supplied provider string. An empty value
@@ -169,8 +171,10 @@ func ParseProvider(s string) (Provider, error) {
 		return ProviderCPU, nil
 	case ProviderCUDA:
 		return ProviderCUDA, nil
+	case ProviderMIGraphX:
+		return ProviderMIGraphX, nil
 	default:
-		return "", fmt.Errorf("unsupported GPU provider %q (supported: cpu, cuda)", s)
+		return "", fmt.Errorf("unsupported GPU provider %q (supported: cpu, cuda, migraphx)", s)
 	}
 }
 
@@ -178,6 +182,12 @@ func ParseProvider(s string) (Provider, error) {
 type GPUConfig struct {
 	Provider Provider
 	DeviceID int
+
+	// MIGraphXMemLimit bounds the MIGraphX allocation arena, in bytes. Zero
+	// leaves the runtime default. This is not a total GPU memory guarantee.
+	MIGraphXMemLimit uint64
+	// MIGraphXCacheDir enables persistent compiled-model caching when set.
+	MIGraphXCacheDir string
 }
 
 type Transcriber struct {
@@ -193,6 +203,7 @@ type Transcriber struct {
 	disableMelChunking bool
 	mel                *MelFilterbank
 	encoder            *ort.DynamicAdvancedSession
+	encoderRunGate     chan struct{}
 	vad                *sileroVAD
 	decoderPool        chan *decoderWorker
 	ffmpeg             *ffmpegConverter
@@ -271,9 +282,21 @@ func buildSessionOptions(gpu GPUConfig) (*ort.SessionOptions, error) {
 			opts.Destroy()
 			return nil, fmt.Errorf("enable CUDA execution provider (device %d): %w", gpu.DeviceID, err)
 		}
+	case ProviderMIGraphX:
+		providerOpts, err := migraphxProviderOptions(gpu)
+		if err != nil {
+			opts.Destroy()
+			return nil, err
+		}
+		// ORT 1.25.1 supports MIGraphX through generic name-based registration,
+		// including cache options unavailable in its legacy provider struct.
+		if err := opts.AppendExecutionProvider("MIGraphX", providerOpts); err != nil {
+			opts.Destroy()
+			return nil, fmt.Errorf("enable MIGraphX execution provider (device %d; requires a MIGraphX-enabled ONNX Runtime build): %w", gpu.DeviceID, err)
+		}
 	default:
 		opts.Destroy()
-		return nil, fmt.Errorf("unsupported GPU provider %q (supported: cpu, cuda)", gpu.Provider)
+		return nil, fmt.Errorf("unsupported GPU provider %q (supported: cpu, cuda, migraphx)", gpu.Provider)
 	}
 
 	return opts, nil
@@ -288,6 +311,12 @@ func NewTranscriber(modelsDir string, workers int, opts Options) (*Transcriber, 
 		maxTokensPerStep: 10,
 		blankIdx:         8192,
 		ffmpeg:           newFFmpegConverter(opts.FFmpeg),
+	}
+	if opts.GPU.Provider == ProviderMIGraphX {
+		// ORT 1.25.1's MIGraphX provider mutates shape-dependent compiler state
+		// before taking its execution mutex. Serialize this shared session's
+		// native Run calls; CPU/CUDA retain their original concurrency.
+		t.encoderRunGate = make(chan struct{}, 1)
 	}
 
 	// Load config
@@ -397,8 +426,8 @@ func NewTranscriber(modelsDir string, workers int, opts Options) (*Transcriber, 
 	// Encoder runs as a single long-lived dynamic session reused across requests.
 	// Input/output shapes vary with audio length, so we pass freshly shaped
 	// tensors to each Run rather than rebuilding the session. ORT Run is
-	// thread-safe on a shared session and every request supplies its own
-	// tensors, so this is safe under the concurrent decoder worker model.
+	// thread-safe on a shared CPU/CUDA session and every request supplies its
+	// own tensors. MIGraphX Run is gated around shape-dependent recompilation.
 	t.encoder, err = ort.NewDynamicAdvancedSession(
 		encoderPath,
 		[]string{"audio_signal", "length"},
@@ -437,6 +466,9 @@ func NewTranscriber(modelsDir string, workers int, opts Options) (*Transcriber, 
 		vad, err := newSileroVAD(vadPath, sessOpts)
 		switch {
 		case err == nil:
+			if opts.GPU.Provider == ProviderMIGraphX {
+				vad.runMu = &sync.Mutex{}
+			}
 			t.vad = vad
 		case os.IsNotExist(err):
 			slog.Warn("VAD model not found, chunk boundaries fall back to mel energy",
@@ -728,10 +760,12 @@ func (t *Transcriber) runInference(ctx context.Context, features [][]float32, em
 
 	// Reuse the shared encoder session. Shapes vary per request, so tensors are
 	// supplied to Run each time; the session itself is built once at startup.
-	if err := t.encoder.Run(
-		[]ort.Value{inputTensor, lengthTensor},
-		[]ort.Value{outputTensor, outLenTensor},
-	); err != nil {
+	if err := withEncoderRunGate(ctx, t.encoderRunGate, func() error {
+		return t.encoder.Run(
+			[]ort.Value{inputTensor, lengthTensor},
+			[]ort.Value{outputTensor, outLenTensor},
+		)
+	}); err != nil {
 		return nil, fmt.Errorf("encoder run failed: %w", err)
 	}
 

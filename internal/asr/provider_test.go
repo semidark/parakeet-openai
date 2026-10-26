@@ -18,6 +18,8 @@ func TestParseProvider(t *testing.T) {
 		{"empty defaults to cpu", "", ProviderCPU, false},
 		{"explicit cpu", "cpu", ProviderCPU, false},
 		{"cuda", "cuda", ProviderCUDA, false},
+		{"migraphx", "migraphx", ProviderMIGraphX, false},
+		{"migraphx normalized", "  MIGraphX  ", ProviderMIGraphX, false},
 		{"uppercase normalized", "CUDA", ProviderCUDA, false},
 		{"surrounding whitespace", "  cuda  ", ProviderCUDA, false},
 		{"unknown rejected", "tensorrt", "", true},
@@ -47,7 +49,7 @@ func TestParseProviderErrorNamesSupported(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for unsupported provider")
 	}
-	for _, want := range []string{"cpu", "cuda"} {
+	for _, want := range []string{"cpu", "cuda", "migraphx"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error %q should name supported provider %q", err.Error(), want)
 		}
@@ -76,5 +78,8 @@ func TestProviderDefaultsToCPU(t *testing.T) {
 	}
 	if got := provider(GPUConfig{Provider: ProviderCUDA}); got != ProviderCUDA {
 		t.Errorf("provider(cuda) = %q, want %q", got, ProviderCUDA)
+	}
+	if got := provider(GPUConfig{Provider: ProviderMIGraphX}); got != ProviderMIGraphX {
+		t.Errorf("provider(migraphx) = %q, want %q", got, ProviderMIGraphX)
 	}
 }

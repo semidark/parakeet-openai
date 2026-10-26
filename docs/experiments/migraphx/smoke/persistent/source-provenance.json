@@ -1,0 +1,32 @@
+[
+  {
+    "source": "/work/smoke/realaudio/audio.go",
+    "sha256": "69b41858692ddb12ba75fba486933a234c79fbf4d27187c43b41277b2f76e779",
+    "snapshot": "audio.go",
+    "change": "none"
+  },
+  {
+    "source": "/work/smoke/realaudio/mel.go",
+    "sha256": "29afcca4b09bb7d822cde9e43ba6deae5a47aee1ce5699a50dd7b26d21c7655f",
+    "snapshot": "mel.go",
+    "change": "none"
+  },
+  {
+    "source": "/work/smoke/realaudio/decoder_data.go",
+    "sha256": "5333f628330a1643952d3310b515604d65536456d944608016f7fad8afdae1e1",
+    "snapshot": "decoder_data.go",
+    "change": "none"
+  },
+  {
+    "source": "/work/smoke/realaudio/decoder_worker.go",
+    "sha256": "c8ab32d850d8e27b1ba1533ce45d32573745c63011c133b2f1f917f6759952f3",
+    "snapshot": "decoder_worker.go",
+    "change": "none"
+  },
+  {
+    "source": "/work/smoke/realaudio/main.go",
+    "sha256": "57eac6779cbc62da76c297d9c0f602cc9f4cd1f4712f8763c34321aff7a46691",
+    "snapshot": "shared.go",
+    "change": "artifact, trace, validation and transcript helpers only"
+  }
+]

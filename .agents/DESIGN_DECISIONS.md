@@ -272,3 +272,71 @@ Loud or dynamic music has no quiet frame, so the mel-energy layer degrades to ro
 - New files: `internal/asr/boundary.go` (oracle stack), `internal/asr/vad.go` (Silero session), `internal/asr/seam.go` (dedup). `chunker.go` gains `planChunksWithBoundaries`/`planForAudioWithBoundaries`; `transcriber.go` threads absolute timesteps, the seam buffer, and the per-request oracle chain.
 - `silero_vad.onnx` is a new required-for-VAD model file; its absence is a graceful degrade, not a failure.
 - Reference reproduction material (the issue #18 MP3 plus `.srt`/`.vtt`/`.txt`) lives in `testdata/reference/`, with a build-tag-gated Go seam inspector (`-tags=seaminspect`) that prints transcribed vs reference text around every seam. No Python, no network.
+
+## DD-015: Experimental MIGraphX Provider with Upstream Runtime Parity
+
+**Context**: AMD Radeon GPUs cannot use the CUDA provider. MIGraphX offers an
+AMD GPU execution path, but the locally available older ORT 1.23.2 stack does
+not match the API version required by the existing Go binding.
+
+**Decision**: Add opt-in `-gpu migraphx` using generic provider registration
+with the name `MIGraphX`. Keep ONNX Runtime 1.25.1 and the unchanged
+`github.com/yalue/onnxruntime_go v1.30.1` dependency; do not downgrade the
+binding, negotiate older API versions, or introduce a C shim. A separately
+built MIGraphX-enabled runtime and compatible ROCm libraries are required.
+
+**Isolation and concurrency**: Preserve the CPU and CUDA branches. Serialize
+only the shared encoder's native Run in MIGraphX mode because the provider
+mutates shape-dependent compilation state before acquiring its execution
+lock. Waiting for the encoder gate is context-cancellable; an active native
+Run is not. Serialize shared VAD runs in MIGraphX mode too. Decoder workers
+retain independent sessions and their existing pool ownership.
+
+**Configuration**: `-migraphx-mem-limit` controls the provider arena in bytes,
+not total GPU memory. `kSameAsRequested` bounds arena growth increments.
+`-migraphx-cache-dir` is optional and disabled by default. The unpatched
+ORT 1.25.1 provider has reproduced dynamic-shape disk-cache collisions;
+do not enable caching for varying lengths until runtime fixes are verified.
+
+**Validation boundary**: Native loading and GPU registration passed on
+`gfx1151`. Standalone encoder GPU comparisons passed with a diagnostic copy
+removing omitted optional Pad inputs and a process-local
+`MIGRAPHX_DISABLE_PASSES=simplify_reshapes` override. With disk caching disabled,
+256-to-128-to-256-frame comparisons passed in one session, with six MIGraphX
+kernel events and no CPU kernel events. Warm runs took 21-22 ms, but each
+shape change required roughly 3-5 minutes of compilation. With the unpatched
+provider, the original encoder falls back to CPU, and variable-length cached
+inference returned a wrong output shape. An isolated shape-key/Pad provider
+patch passed all 12 original-encoder comparisons for 128-to-256-to-128 frames
+across two sessions with the same compiler workaround. Both profiles contained
+only MIGraphX kernel events; maximum absolute error was `2.43075e-7`.
+Distinct shape caches were generated and cached shape changes took 3.4-5.7 s;
+an independent-process 256-to-128-to-256 replay passed six more comparisons
+with only MIGraphX kernel events and unchanged cache hashes/metadata. This
+verifies cache reuse for those two tested shapes. Subsequent default-pass
+decoder checks and independent-process replay passed; applying the encoder
+workaround to the decoder caused compilation errors and a native crash.
+A separate-process six-second real-audio pipeline passed numerical checks,
+exact transcripts/trajectories, and strict MIGraphX attribution. The application
+does not implement that process isolation, and toggling a process-global
+environment variable is not a safe substitute.
+
+**Paused outcome**: Persistent two-process v1 validation ended in an encoder
+OOM kill during a 10-to-2-second shape switch under the unchanged 24 GiB cap.
+Fresh cache-only v2 passed 2-to-6-to-10-to-2 seconds, then hit the sampled
+22 GiB guard during the next 6-second encoder request (22.396 GiB observed).
+No v2 compilation markers, changed cache hashes, or new OOM kill occurred.
+Neither run reached GPU timing; no completed GPU p50/p95 or service benchmark
+exists. These measurements do not prove a leak or an upstream root cause.
+Keep the working ROCm deployment as the baseline; no more experiments are
+authorized by this archival task. Arbitrary-length, default-compiler encoder,
+VAD, concurrent-native-request, and production compatibility remain unverified.
+See README.md and `docs/experiments/migraphx/README.md` for the final handoff.
+No model rewrite or compiler-pass override is applied automatically, and no
+published MIGraphX image or production readiness is claimed.
+
+**Rejected alternatives**: Binding downgrades, API-version fallbacks, silent
+provider-registration fallback, and globally enabled compiler workarounds
+would hide compatibility failures or change existing deployments. Static
+shape bucketing is not introduced without validating its effect on the
+variable-length inference pipeline.

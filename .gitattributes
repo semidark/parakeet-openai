@@ -1,0 +1,3 @@
+# Unified-diff blank context lines contain a required single-space prefix.
+# Preserve exact runtime source snapshots and their recorded SHA256 hashes.
+docs/experiments/migraphx/runtime/*.patch whitespace=-blank-at-eol

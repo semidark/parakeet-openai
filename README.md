@@ -285,6 +285,140 @@ memory and fail with an ONNX Runtime allocation error. Segment long audio (for
 example with `ffmpeg -i in.wav -f segment -segment_time 300 -ar 16000 -ac 1
 chunk_%03d.wav`) or use a CPU image, which is bounded by system RAM instead.
 
+### GPU Inference (MIGraphX / AMD, experimental)
+
+MIGraphX provider selection uses the existing `onnxruntime_go v1.30.1`
+binding and targets **ONNX Runtime 1.25.1**, matching the CPU/CUDA runtime
+version. No binding downgrade, API-version fallback, or additional C shim is
+required: ORT 1.25.1 supports generic registration with the name `MIGraphX`.
+
+**Prerequisites:** an AMD GPU, compatible ROCm/MIGraphX libraries, and an
+**ORT 1.25.1 build with the MIGraphX execution provider enabled**. The standard
+CPU and CUDA archives do not provide MIGraphX. The checked AMD ROCm 7.2.4
+manylinux index publishes ORT 1.23.2 MIGraphX wheels, not a matching 1.25.1
+wheel; those older wheels cannot be used with this binding unchanged.
+A local source build of ORT 1.25.1 against ROCm 7.2.4 / MIGraphX 2.15.0
+completed, and native loading with the unchanged Go binding passed. This
+does not establish end-to-end inference compatibility or provide a published image.
+
+```bash
+LD_LIBRARY_PATH=/opt/onnxruntime/lib:/opt/rocm/lib \
+ONNXRUNTIME_LIB=/opt/onnxruntime/lib/libonnxruntime.so.1.25.1 \
+./parakeet -gpu migraphx -gpu-device 0
+```
+
+Disk caching is disabled by default. **Do not enable `-migraphx-cache-dir`
+for variable-length inputs with the unpatched ORT 1.25.1 provider:** a local
+probe reproduced reuse of a 128-frame compiled program for a 256-frame input,
+producing the wrong encoder output shape. The provider's first dynamic run
+uses an empty shape key, and its shape-vector hash counts elements rather
+than bytes. A no-cache diagnostic model probe passed shape changes, but
+disabling the cache is not verified as a complete fix for varying real-audio
+lengths with the original models; shape changes also required minutes of
+recompilation in that probe.
+For a runtime with verified cache fixes, create the directory beforehand and
+make it writable by the server user; the provider does not create it. Treat
+caches as runtime/GPU/compiler-specific artifacts and do not assume portability
+across stack upgrades. `-migraphx-mem-limit` optionally
+limits the provider's allocation arena in bytes, **not total GPU memory**.
+The arena grows with `kSameAsRequested` rather than power-of-two increments.
+The application does not request fp16/int8 quantization; runtime environment
+settings may override precision defaults. Existing model selection is unchanged
+and prefers `.int8.onnx` files when present. Use a directory containing only
+the intended fp32 encoder/decoder models for initial MIGraphX validation;
+quantized-model support is not established here. CPU and CUDA configuration
+remain unchanged.
+
+Provider-registration failure is fatal rather than silently choosing CPU.
+However, successful registration does not prove GPU coverage: unsupported
+graph nodes may still execute on CPU. Profiling and output comparisons are
+required to establish acceleration and correctness.
+
+MIGraphX calls to the shared encoder are serialized because the 1.25.1
+provider updates shape-dependent compiler state before its execution lock.
+Requests waiting for the encoder can be canceled, but an already-started
+native Run is not interrupted by this guard. CPU/CUDA encoder concurrency
+and the decoder worker pool are unchanged.
+The shared VAD's native Run calls are also serialized in MIGraphX mode,
+including first-run compilation; its existing API has no cancellable wait.
+
+**Validation status (standalone probes, not end-to-end application validation):**
+
+- Native loading of CPU-only and locally built MIGraphX-enabled ORT 1.25.1
+  libraries is verified with the unchanged binding. The CPU-only runtime
+  rejects MIGraphX as expected. GPU registration passed on AMD Radeon 8060S
+  (`gfx1151`) with ROCm 7.2.4 / MIGraphX 2.15.0.
+- With the unpatched provider, the original FP32 encoder falls back entirely
+  to CPU: the provider rejects 48 `Pad` nodes with omitted optional inputs,
+  exceeding its unsupported-node cutoff. Successful registration alone
+  therefore does not prove acceleration.
+- A separate diagnostic model copy with only trailing empty `Pad` inputs
+  removed produced byte-identical CPU references at 128 and 256 frames.
+  Its first GPU compilation failed in `simplify_reshapes` at default settings.
+- With `MIGRAPHX_DISABLE_PASSES=simplify_reshapes` set only for the diagnostic
+  process, the copy passed a 128-frame CPU/GPU comparison: maximum absolute
+  error `9.05e-7`, approximately 22 ms warm inference, and successful same-shape
+  cache reuse across two sessions. Both profiles recorded only MIGraphX kernel
+  events. The first run including compilation took approximately 3 min 19 s.
+- With the unpatched provider, variable-length cached inference failed:
+  a 128-to-256-frame run
+  timed out after five minutes, and a fresh 256-frame session using the
+  128-frame cache returned `[1, 1024, 16]` instead of `[1, 1024, 32]`.
+- With disk caching disabled and the same process-local compiler workaround,
+  the diagnostic copy passed all six comparisons for 256 → 128 → 256 frames
+  in one session. Output shapes and lengths matched CPU references; maximum
+  absolute error was `5.82e-7` or less. The profile recorded six MIGraphX kernel
+  events and no CPU kernel events. Warm runs took approximately 21–22 ms,
+  but each shape change, including the return to 256 frames, required roughly
+  3–5 minutes of compilation. This does not validate disk caching or the
+  original encoder model.
+- An isolated provider patch for complete, versioned shape keys and omitted
+  optional `Pad` values built successfully. Shape-key regression and native
+  loading checks passed. With the same process-local compiler workaround,
+  the original encoder passed all 12 comparisons for 128 → 256 → 128 frames
+  across two sessions: maximum absolute error `2.44e-7` or less, with 12
+  MIGraphX kernel events and no CPU kernel events. Distinct shape-specific
+  cache files were generated; cached shape changes took 3.4–5.7 s rather than
+  minutes, and warm runs took 21–23 ms. A new-process 256 → 128 → 256 replay
+  also passed all six comparisons with only MIGraphX kernel events, 3.2–3.7 s
+  shape-load runs, and unchanged cache hashes and metadata. This verifies cache
+  reuse for the tested two shapes. It is limited synthetic-input validation,
+  not proof of
+  arbitrary-length or default-compiler compatibility.
+- Decoder default-pass numerical checks and independent-process cache replay
+  passed with exclusively MIGraphX profile events. Applying the encoder's
+  `simplify_reshapes` workaround to the decoder instead caused compiler errors
+  followed by a native crash; the two stages need separate compiler environments.
+- A standalone six-second real-audio pipeline with separate encoder/decoder
+  processes passed per-element numerical checks, exact transcript and full
+  token/duration/frame-trajectory equality, strict MIGraphX attribution, and
+  independent-process cache replay. Its warm encoder observation was about
+  29 ms; this is not an end-to-end application or service benchmark.
+- Persistent two-process validation failed under the unchanged 24 GiB container
+  cap: v1's encoder was OOM-killed on a 10-to-2-second shape switch. Fresh
+  cache-only v2 workers passed 2 → 6 → 10 → 2 seconds, then reached 22.396 GiB
+  sampled container usage on the next 6-second encoder request and were stopped
+  by the guard. No compilation markers, changed cache hashes, or new OOM kill
+  occurred in v2. Neither run reached GPU timing; no GPU p50/p95 report exists.
+  Aggregate memory samples do not establish a leak or an allocation-level cause.
+- The experiment is paused. The working ROCm deployment remains the baseline.
+  Concurrent native requests, VAD, arbitrary-length behavior, and production
+  integration remain unverified. The original models and production service
+  were not modified by the probes. See the [handoff snapshot](docs/experiments/migraphx/README.md)
+  for sources, runtime provenance, findings, and offline checks.
+
+No compiler-pass workaround, model rewrite, or static-shape override is
+enabled automatically by this application. The diagnostic results do not
+establish end-to-end deployable compatibility with the original models.
+No published MIGraphX container image is claimed by this experimental change.
+
+To run the CPU-only native compatibility test:
+
+```bash
+PARAKEET_TEST_ORT125_CPU_LIB=/path/to/cpu-only/libonnxruntime.so.1.25.1 \
+  go test ./internal/asr -run TestMIGraphXCPUOnlyRuntime -v
+```
+
 ## Configuration
 
 ### Command Line Flags
@@ -299,8 +433,10 @@ chunk_%03d.wav`) or use a CPU image, which is bounded by system RAM instead.
 | `-ffmpeg`                     | Enable ffmpeg fallback for non-WAV audio                                 | `true`                     | `-ffmpeg=false`                        |
 | `-ffmpeg-path`                | Path to the ffmpeg binary (empty = resolve from `PATH`)                  | ``                         | `-ffmpeg-path /usr/bin/ffmpeg`         |
 | `-ffmpeg-timeout`             | Maximum wall-clock time for a single ffmpeg conversion                   | `60s`                      | `-ffmpeg-timeout 30s`                  |
-| `-gpu`                        | Execution provider: `cpu` or `cuda`                                      | `cpu`                      | `-gpu cuda`                            |
-| `-gpu-device`                 | GPU device index for `cuda`                                              | `0`                        | `-gpu-device 1`                        |
+| `-gpu`                        | Execution provider: `cpu`, `cuda`, or experimental `migraphx`             | `cpu`                      | `-gpu migraphx`                        |
+| `-gpu-device`                 | GPU device index for `cuda`/`migraphx`                                   | `0`                        | `-gpu-device 1`                        |
+| `-migraphx-mem-limit`          | MIGraphX arena limit in bytes (not total GPU memory)                      | `0` (runtime default)      | `-migraphx-mem-limit 6442450944`        |
+| `-migraphx-cache-dir`          | Writable persistent MIGraphX compiled-model cache directory               | Empty (disabled)           | `-migraphx-cache-dir /cache/migraphx`   |
 | `-long-audio`                 | Split audio over the model limit into chunks instead of rejecting it     | `false`                    | `-long-audio`                          |
 | `-chunk-seconds`              | Sliding-window size for long audio, in seconds                           | `300`                      | `-chunk-seconds 240`                   |
 | `-chunk-overlap-seconds`      | Overlap between consecutive chunks, in seconds                           | `15`                       | `-chunk-overlap-seconds 10`            |

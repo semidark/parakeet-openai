@@ -38,11 +38,15 @@ type Config struct {
 	FFmpegTimeout time.Duration
 
 	// GPUProvider selects the ONNX Runtime execution provider: "cpu" (default)
-	// or "cuda". An unknown value fails fast at startup.
+	// or "cuda" or "migraphx". An unknown value fails fast at startup.
 	GPUProvider string
 
 	// GPUDeviceID selects the GPU device index for GPU providers.
 	GPUDeviceID int
+
+	// Optional MIGraphX-specific arena limit (bytes) and compiled-model cache.
+	MIGraphXMemLimit uint64
+	MIGraphXCacheDir string
 
 	// ChunkSeconds is the sliding-window size for long audio, in seconds.
 	// ChunkOverlapSeconds is how much consecutive windows share so words at
@@ -89,8 +93,10 @@ func New(cfg Config) (*Server, error) {
 			Timeout:    cfg.FFmpegTimeout,
 		},
 		GPU: asr.GPUConfig{
-			Provider: provider,
-			DeviceID: cfg.GPUDeviceID,
+			Provider:         provider,
+			DeviceID:         cfg.GPUDeviceID,
+			MIGraphXMemLimit: cfg.MIGraphXMemLimit,
+			MIGraphXCacheDir: cfg.MIGraphXCacheDir,
 		},
 		Chunk: asr.ChunkConfig{
 			Enabled:        cfg.LongAudio,

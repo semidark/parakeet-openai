@@ -1,0 +1,32 @@
+[
+  {
+    "source": "/repo/internal/asr/audio.go",
+    "sha256": "b88cacd07e5c560033deb4e9f4bd5a1e81b8733e8c2d7205d11bba4c63aa6c6c",
+    "snapshot": "audio.go",
+    "change": "package asr -> package main only"
+  },
+  {
+    "source": "/repo/internal/asr/mel.go",
+    "sha256": "99bf93d269c3afcd8e23b5f1ed43ff25dcdd7c4254d4826bc07111fa5eb52dac",
+    "snapshot": "mel.go",
+    "change": "package asr -> package main only"
+  },
+  {
+    "source": "/work/smoke/decoder/data.go",
+    "sha256": "5333f628330a1643952d3310b515604d65536456d944608016f7fad8afdae1e1",
+    "snapshot": "decoder_data.go",
+    "change": "none"
+  },
+  {
+    "source": "/work/smoke/decoder/main.go",
+    "sha256": "e1c8e2efe61f9c1582f5b8ef94a3aca54d62cfd744d2791b0678a017e31875fc",
+    "snapshot": "decoder_worker.go",
+    "change": "worker + inspectModel only; minimal imports"
+  },
+  {
+    "source": "/repo/internal/asr/transcriber.go",
+    "sha256": "c6afc90121cf1b5ede787e1fc86af13cc7b4f4a4c963be5a61d2ee75b118abd7",
+    "snapshot": null,
+    "change": "inspected TDT loop and transcript policy; implemented full completion using validated advance helper"
+  }
+]
