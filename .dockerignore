@@ -17,6 +17,7 @@ bin/
 test/
 testdata/
 *.wav
+drift_test_package.zip
 
 # Git
 .git

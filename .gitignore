@@ -9,6 +9,7 @@ models/*
 # Test audio files
 .test/
 .audio.test/
+drift_test_package.zip
 
 # IDE
 .idea/
